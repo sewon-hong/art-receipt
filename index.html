@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>미술팀 영수증</title>
+<style>
+  :root{
+    --bg:#f4f4f2; --card:#ffffff; --ink:#1d1d1b; --sub:#6b6b66; --line:#e3e2de;
+    --accent:#c8321e; --accent-ink:#ffffff; --ok:#1e7a46; --warn:#b26a00; --chip:#efeeea;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#141413; --card:#1f1f1d; --ink:#f1f0ec; --sub:#a3a29c; --line:#34332f;
+      --accent:#e2543f; --ok:#4cc27f; --warn:#e3a640; --chip:#2b2a27; }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;
+    font-size:16px;line-height:1.45}
+  .hide{display:none!important}
+  input[type=file]{display:none}
+  input[type=text],select{width:100%;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px;outline:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  .btn{border:0;border-radius:14px;padding:15px 18px;font:inherit;font-weight:700;cursor:pointer}
+  .btn.main{background:var(--accent);color:var(--accent-ink)}
+  .btn:disabled{opacity:.45}
+  .btn.sec{background:var(--chip);color:var(--ink)}
+  #ask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:8}
+  #ask .sheet{background:var(--card);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom))}
+  #ask h3{margin:0 0 4px;font-size:19px}
+  #ask p{margin:0 0 16px;color:var(--sub);font-size:14px}
+  #ask .row2{display:flex;gap:10px} #ask .row2 .btn{flex:1;font-size:17px}
+  #pickBox{display:flex;flex-direction:column;gap:10px}
+  #spChip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;font:inherit;font-size:14px;cursor:pointer}
+  #spChip b{color:var(--accent)}
+
+  /* ① 이름 정하기 (처음 한 번) */
+  #namePage{min-height:100%;display:flex;flex-direction:column;justify-content:center;padding:24px 20px;max-width:440px;margin:0 auto}
+  #namePage h1{font-size:24px;margin:0 0 6px}
+  #namePage p{color:var(--sub);margin:0 0 20px;font-size:14px}
+  #namePage .btn{width:100%;margin-top:14px;font-size:17px}
+  .nameGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .nameGrid button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:14px 4px;font:inherit;font-size:16px;font-weight:600;cursor:pointer}
+  .nameGrid button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  #nameOk:disabled{opacity:.4}
+
+  /* ② 촬영 화면 */
+  #shoot{position:fixed;inset:0;display:flex;flex-direction:column}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:calc(12px + env(safe-area-inset-top)) 16px 8px}
+  .top .me{font-size:14px;color:var(--sub)} .top .me b{color:var(--ink);font-size:16px}
+  #shoot .top{justify-content:center;position:absolute;left:0;right:0;top:0;z-index:2;pointer-events:none}
+  #shoot .top .me{pointer-events:auto;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 20px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  #shoot .top .me b{font-size:21px;font-weight:800}
+  #shoot .center{padding:100px 16px 100px}
+  #shoot .bottom{position:absolute;left:0;right:0;bottom:0;z-index:2}
+  #center.empty #camBtn{margin-top:90px}   /* 아래 안내 글 높이만큼 내려서 버튼이 화면 정중앙에 */
+  .pill{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:9px 14px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:0 16px;min-height:0;overflow-y:auto}
+  #camBtn{flex-shrink:0;width:min(58vw,240px);height:min(58vw,240px);border-radius:50%;border:0;background:var(--accent);color:#fff;
+    font-size:min(26vw,108px);line-height:1;cursor:pointer;box-shadow:0 10px 30px rgba(200,50,30,.28);display:flex;align-items:center;justify-content:center}
+  #camBtn:active{transform:scale(.96)}
+  .camLabel{font-size:15px;color:var(--sub);text-align:center}
+  .thumbs{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:100%;max-height:216px;overflow-y:auto;padding:2px;flex-shrink:0}
+  #center:not(.empty) #camBtn{width:112px;height:112px;font-size:52px}   /* 사진을 고른 뒤엔 카메라를 작게, 사진들을 크게 */
+  .thumb{position:relative;flex:0 0 auto;width:74px;height:98px;border-radius:10px;overflow:hidden;background:var(--chip);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--sub)}
+  .thumb img{width:100%;height:100%;object-fit:cover}
+  .thumb .cut{position:absolute;left:3px;bottom:3px;border:0;border-radius:8px;background:rgba(0,0,0,.7);color:#fff;font-size:11px;font-weight:600;padding:4px 6px;cursor:pointer}
+  .thumb .no{position:absolute;left:3px;top:3px;background:var(--accent);color:#fff;border-radius:6px;font-size:11px;font-weight:700;padding:1px 5px}
+  .cutTip{font-size:12px;color:var(--sub);text-align:center;margin-top:6px}
+  .thumb.bad{outline:3px solid var(--accent);outline-offset:-3px}
+  .thumb .badtag{position:absolute;left:0;right:0;bottom:0;background:var(--accent);color:#fff;font-size:10px;font-weight:700;text-align:center;padding:4px 0}
+  .cutTip.warn{color:var(--accent);font-weight:600;font-size:13px}
+  .thumb .busy{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);color:#fff;font-size:10px;text-align:center;padding:4px 0}
+  #cutter{position:fixed;inset:0;background:#111;z-index:10;display:flex;flex-direction:column;color:#fff}
+  #cutter .bar{display:flex;align-items:center;gap:8px;padding:10px 12px calc(0px)}
+  #cutter .bar b{flex:1;font-size:16px;text-align:center}
+  #cutter .bar button{border:0;border-radius:10px;padding:9px 12px;font:inherit;font-weight:600;background:#333;color:#fff;cursor:pointer}
+  #cutter .bar button.go{background:#ff3b30}
+  #cutHint{font-size:12px;color:#bbb;padding:6px 12px 8px;text-align:center}
+  #cutStage{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:8px}
+  #cutWrap{position:relative;touch-action:none}
+  #cutWrap img{display:block;max-width:calc(100vw - 16px);max-height:calc(100vh - 130px);user-select:none;-webkit-user-select:none;-webkit-user-drag:none;pointer-events:none}
+  .cbox{position:absolute;border:2px solid #ff3b30;background:rgba(255,59,48,.14)}
+  .cbox span{position:absolute;left:0;top:0;background:#ff3b30;color:#fff;font-size:11px;font-weight:700;padding:0 4px}
+  .cbox button{position:absolute;right:-12px;top:-12px;width:24px;height:24px;border-radius:50%;border:0;background:#ff3b30;color:#fff;font-size:12px;padding:0;line-height:24px;cursor:pointer}
+  .thumb .x{position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:13px;line-height:24px;padding:0;cursor:pointer}
+  #memo{max-width:420px}
+  .bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px calc(14px + env(safe-area-inset-bottom))}
+  .side{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:12px 16px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:82px}
+  .side span{font-size:27px;line-height:1}
+  #submitBtn{width:100%;max-width:420px;font-size:17px}
+  .err{color:var(--accent);font-size:14px;text-align:center}
+  .done{text-align:center}
+  .done .ic{font-size:64px;line-height:1}
+  .done h2{margin:10px 0 4px}
+  .done p{color:var(--sub);font-size:14px;margin:4px 0}
+
+  /* ③ 내 내역 */
+  #hist{position:fixed;inset:0;overflow-y:auto;background:var(--bg)}
+  #hist .wrap{max-width:520px;margin:0 auto;padding:0 16px 40px}
+  .tabs{display:flex;border:1px solid var(--line);border-radius:12px;padding:3px;margin:6px 0 12px}
+  .tabs button{flex:1;border:0;background:transparent;font:inherit;font-size:14px;font-weight:600;color:var(--sub);padding:9px;border-radius:9px;cursor:pointer}
+  .tabs button.on{background:var(--ink);color:var(--card)}
+  .sum{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .sum div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .sum small{display:block;font-size:12px;color:var(--sub)} .sum b{font-size:15px}
+  .item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:8px}
+  .item .t{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--sub)}
+  .item .m{display:flex;justify-content:space-between;gap:8px;margin-top:4px}
+  .item .m .c{font-weight:600;word-break:keep-all} .item .m .a{font-weight:700;white-space:nowrap}
+  .badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--sub);white-space:nowrap}
+  .badge.ok{color:var(--ok)} .badge.wait{color:var(--warn)}
+  .warnline{font-size:13px;color:var(--warn);margin-top:6px}
+  .hint{font-size:13px;color:var(--sub);margin-top:6px}
+  .foot{text-align:center;margin-top:24px}
+  .hero{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 16px;margin-bottom:8px;text-align:center}
+  .hero small{display:block;font-size:14px;color:var(--sub);font-weight:600}
+  .hero b{display:block;font-size:34px;letter-spacing:-.5px;margin-top:2px}
+  .hero span{display:block;font-size:12px;color:var(--sub);margin-top:4px}
+  .paperNote{color:var(--accent);font-size:12px;font-weight:600;margin:0 2px 8px;cursor:pointer;text-decoration:underline}
+  .day{position:relative}
+  .day.paper::after{content:'';position:absolute;top:4px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .paperDate{font-size:14px;font-weight:700;color:var(--accent);margin:12px 2px 6px}
+  .cal{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:12px}
+  .calHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .calHead b{font-size:16px}
+  .calHead button{border:0;background:var(--chip);color:var(--ink);width:36px;height:36px;border-radius:10px;font-size:20px;cursor:pointer}
+  .calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .calGrid .dow{font-size:11px;color:var(--sub);text-align:center;padding:2px 0}
+  .day{aspect-ratio:1/1.05;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--ink);font:inherit;font-size:13px;
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:5px 0 0;cursor:default;gap:1px}
+  .day.out{visibility:hidden}
+  .day.has{cursor:pointer;font-weight:700}
+  .day.todo{background:rgba(200,50,30,.12);color:var(--accent)}
+  .day.paid{background:rgba(30,122,70,.13);color:var(--ok)}
+  .day.today{border-color:var(--line)}
+  .day.sel{border-color:var(--ink);border-width:2px}
+  .day small{font-size:10px;font-weight:600;line-height:1}
+  .legend{display:flex;gap:14px;justify-content:center;margin-top:8px;font-size:12px;color:var(--sub)}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:3px}
+  .dot.todo{background:rgba(200,50,30,.35)} .dot.paid{background:rgba(30,122,70,.4)}
+  .dayTitle{display:flex;justify-content:space-between;align-items:baseline;margin:4px 2px 8px}
+  .dayTitle b{font-size:16px} .dayTitle span{font-size:13px;color:var(--sub)}
+  .photos{display:flex;gap:6px;overflow-x:auto;margin-top:10px}
+  .photos img{height:120px;border-radius:8px;border:1px solid var(--line);cursor:zoom-in}
+  .photos .ph{font-size:12px;color:var(--sub)}
+  #viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;z-index:9}
+  #viewer img{max-width:100%;max-height:100%;object-fit:contain}
+  .foot a{font-size:12px;color:var(--sub)}
+</style>
+</head>
+<body>
+
+<!-- ① 이름 정하기: 처음 한 번만 -->
+<section id="namePage" class="hide">
+  <h1>🧾 미술팀 영수증</h1>
+  <p>처음 한 번만 이름을 정해주세요. 다음부터는 바로 촬영 화면이 열려요.</p>
+  <div class="nameGrid" id="nameGrid"><span class="hint">이름 불러오는 중…</span></div>
+  <button class="btn main" id="nameOk">시작하기</button>
+</section>
+
+<!-- ② 촬영 화면 -->
+<section id="shoot" class="hide">
+  <div class="top">
+    <div class="me"><b id="meName"></b> 님</div>
+  </div>
+
+  <div class="center empty" id="center">
+    <button id="camBtn" aria-label="촬영">📷</button>
+    <div class="camLabel" id="camLabel">눌러서 영수증 촬영<br><small>흔들리지 않게 찍어주세요</small></div>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="cutTip hide" id="cutTip"></div>
+    <button id="spChip" class="hide"></button>
+    <input type="text" id="memo" class="hide" placeholder="특이사항 (선택)">
+    <button class="btn main hide" id="submitBtn">제출하기</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="center done hide" id="done">
+    <div class="ic">✅</div>
+    <h2>제출 완료</h2>
+    <p id="doneId"></p>
+    <p>AI가 읽고 정산인이 확인해요.<br>종이 영수증은 '내 내역'에 나온 날짜에 전달해 주세요 🙏</p>
+    <button class="btn main" id="againBtn" style="margin-top:14px">다음 영수증 찍기</button>
+  </div>
+
+  <div class="bottom" id="bottom">
+    <button id="picBtn" class="side"><span>🖼</span>사진첩</button>
+    <button id="histBtn" class="side"><span>📋</span>내 내역</button>
+  </div>
+
+  <input type="file" id="camIn" accept="image/*" capture="environment">
+  <input type="file" id="picIn" accept="image/jpeg,image/png,image/heic,image/heif,image/webp" multiple>
+</section>
+
+<!-- ③ 내 내역 -->
+<section id="hist" class="hide">
+  <div class="top">
+    <button class="pill" id="backBtn">← 촬영</button>
+    <div class="me"><b>내 내역</b></div>
+  </div>
+  <div class="wrap">
+    <div class="hero" id="hero"><small>미지급액</small><b id="heroAmt">-</b><span id="heroNote"></span></div>
+    <div class="sum" id="sum"></div>
+    <div class="paperNote hide" id="paperNote"></div>
+    <div class="cal">
+      <div class="calHead"><button id="prevM" aria-label="이전 달">‹</button><b id="calTitle"></b><button id="nextM" aria-label="다음 달">›</button></div>
+      <div class="calGrid" id="calGrid"></div>
+      <div class="legend"><span><i class="dot todo"></i>정산 전</span><span><i class="dot paid"></i>정산 완료</span><span><i class="dot" style="background:var(--accent);border-radius:50%;width:7px;height:7px"></i>종이 미제출</span></div>
+    </div>
+    <div id="dayBox"></div>
+    <div class="foot"><a href="#" id="chgName">이름이 잘못됐나요? 다시 정하기</a></div>
+  </div>
+</section>
+
+<div id="viewer" class="hide"><img id="viewerImg" alt=""></div>
+
+<!-- 본인 지출 확인 -->
+<div id="cutter" class="hide">
+  <div class="bar"><button id="cutCancel">취소</button><b id="cutTitle">영수증 나누기</b><button id="cutAuto">자동 찾기</button><button class="go" id="cutOk">완료</button></div>
+  <div id="cutHint">영수증마다 손가락으로 네모를 그려 주세요 · 잘못된 네모는 ✕</div>
+  <div id="cutStage"><div id="cutWrap"><img id="cutImg" alt=""></div></div>
+</div>
+<div id="ask" class="hide">
+  <div class="sheet">
+    <div id="askBox">
+      <h3>본인 지출 맞으십니까?</h3>
+      <p id="askWho"></p>
+      <div class="row2">
+        <button class="btn sec" id="askNo">아니오</button>
+        <button class="btn main" id="askYes">예</button>
+      </div>
+    </div>
+    <div id="pickBox" class="hide">
+      <h3>누가 돈을 썼나요?</h3>
+      <select id="spSel"></select>
+      <input type="text" id="spTxt" class="hide" placeholder="이름 입력">
+      <button class="btn main" id="spOk">선택 완료</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var PRESET = (new URLSearchParams(location.search).get('n') || '').trim();
+</script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  // 구글 시트 쪽 기능 부르기 (Apps Script 웹앱 API)
+  var API = 'https://script.google.com/macros/s/AKfycbw0rqqkgD6MPv7bryQk7SPRjE4G6PykiHr2-pB2IsMpO2rigDOH1-w755fH5MyBQGEMRQ/exec';
+  var run = function(fn){ var args=[].slice.call(arguments,1);
+    return fetch(API, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({fn:fn, args:args}), credentials:'omit' })
+      .then(function(r){ return r.json(); })
+      .then(function(j){ if(!j.ok) throw new Error(j.error||'오류'); return j.result; }); };
+  var store = { get:function(k){ try{return localStorage.getItem(k);}catch(e){return null;} },
+                set:function(k,v){ try{localStorage.setItem(k,v);}catch(e){} },
+                del:function(k){ try{localStorage.removeItem(k);}catch(e){} } };
+  var num = function(n){ return Number(String(n||'').replace(/[^\d]/g,''))||0; };
+  var won = function(n){ return num(n).toLocaleString('ko-KR'); };
+  var S = { me:'', team:[], images:[], sending:false, lat:null, lng:null, gpsAddr:'', sub:'todo', rows:[], spender:null };
+
+  // 시작: 개인 링크 이름 > 저장된 이름 > 이름 정하기
+  var saved = PRESET || store.get('me') || '';
+  if (PRESET) store.set('me', PRESET);
+  if (saved) goShoot(saved); else showNamePage();
+  run('getInitData').then(function(d){ S.team=d.team||[]; fillNames(); }).catch(function(){});
+  // 위치(GPS)는 받지 않음
+
+  function show(id){ ['namePage','shoot','hist'].forEach(function(x){ $(x).classList.toggle('hide', x!==id); }); }
+
+  // ① 이름
+  function showNamePage(){ show('namePage'); fillNames(); }
+  // 이름 버튼: 하나 누르면 선택(빨간색), 다른 걸 누르면 바뀜 → '시작하기'
+  function fillNames(){
+    var g=$('nameGrid'); if(!S.team.length) return;
+    g.innerHTML='';
+    S.team.forEach(function(n){
+      var b=document.createElement('button'); b.type='button'; b.textContent=n; if(S.pick===n) b.className='on';
+      b.onclick=function(){ S.pick=n; fillNames(); $('nameOk').textContent=n+' 님으로 시작하기'; };
+      g.appendChild(b);
+    });
+    $('nameOk').disabled=!S.pick;
+  }
+  $('nameOk').onclick=function(){
+    if(!S.pick) return;
+    store.set('me', S.pick); goShoot(S.pick);
+  };
+  $('chgName').onclick=function(e){ e.preventDefault(); store.del('me'); PRESET=''; showNamePage(); };
+
+  // ② 촬영
+  function goShoot(n){ S.me=n; $('meName').textContent=n; show('shoot'); }
+  $('camBtn').onclick=function(){ $('camIn').click(); };
+  $('picBtn').onclick=function(){ $('picIn').click(); };
+  $('camIn').onchange=function(e){ addFiles(e.target.files); e.target.value=''; };
+  $('picIn').onchange=function(e){ addFiles(e.target.files); e.target.value=''; };
+  $('histBtn').onclick=function(){ show('hist'); loadHist(); };
+  $('backBtn').onclick=function(){ show('shoot'); };
+
+  function locate(){
+    if(!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(function(p){
+      S.lat=p.coords.latitude; S.lng=p.coords.longitude;
+      run('reverseGeocode',S.lat,S.lng).then(function(a){ if(a) S.gpsAddr=a; });
+    }, function(){}, {enableHighAccuracy:true, timeout:10000, maximumAge:60000});
+  }
+  function addFiles(files){
+    var list=[].slice.call(files||[]); if(!list.length) return;
+    Promise.all(list.map(prep)).then(function(arr){
+      arr.forEach(function(x){ if(x){ S.images.push(x); if(x.thumb) autoSplit(x); } }); redraw();
+      if(S.images.length && S.spender===null) askSpender();
+    });
+  }
+  // 본인 지출 확인
+  function askSpender(){
+    $('askWho').textContent=S.me+' 님이 직접 쓴 돈이 맞나요?';
+    $('askBox').classList.remove('hide'); $('pickBox').classList.add('hide'); $('ask').classList.remove('hide');
+  }
+  $('askYes').onclick=function(){ S.spender=S.me; $('ask').classList.add('hide'); redraw(); };
+  $('askNo').onclick=function(){
+    var sel=$('spSel'); sel.innerHTML='<option value="">지출한 사람을 고르세요</option>';
+    S.team.filter(function(n){ return n!==S.me; }).forEach(function(n){ sel.add(new Option(n,n)); });
+    $('spTxt').value=''; $('spTxt').classList.add('hide');
+    $('askBox').classList.add('hide'); $('pickBox').classList.remove('hide');
+  };
+  $('spSel').onchange=function(){ $('spTxt').classList.toggle('hide', this.value!=='__'); };
+  $('spOk').onclick=function(){
+    var v=$('spSel').value==='__' ? $('spTxt').value.trim() : $('spSel').value;
+    if(!v){ $('spSel').focus(); return; }
+    S.spender=v; $('ask').classList.add('hide'); redraw();
+  };
+  $('spChip').onclick=askSpender;
+  function prep(file){
+    return new Promise(function(ok){
+      if(file.type==='application/pdf'){
+        if(file.size>8*1024*1024){ $('err').textContent='PDF가 너무 커요 (8MB 이하)'; return ok(null); }
+        var r=new FileReader(); r.onload=function(){ ok({mime:'application/pdf', data:String(r.result).split(',')[1], thumb:null}); }; r.readAsDataURL(file); return;
+      }
+      var url=URL.createObjectURL(file), img=new Image();
+      img.onload=function(){
+        var max=2800, w=img.naturalWidth, h=img.naturalHeight, s=Math.min(1, max/Math.max(w,h));
+        var c=document.createElement('canvas'); c.width=Math.round(w*s); c.height=Math.round(h*s);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        var d=c.toDataURL('image/jpeg',0.85); URL.revokeObjectURL(url);
+        ok({mime:'image/jpeg', data:d.split(',')[1], thumb:d, file:file});
+      };
+      img.onerror=function(){ URL.revokeObjectURL(url); $('err').textContent='사진을 열 수 없어요: '+file.name; ok(null); };
+      img.src=url;
+    });
+  }
+  // 사진에서 영수증 한 장 잘라내기 (box: 0~1 비율, rot: 시계 방향 회전 각도) → base64 jpeg
+  function cropB64(src, box, rot){
+    return new Promise(function(ok,no){
+      var img=new Image();
+      img.onload=function(){
+        var W=img.naturalWidth, Hh=img.naturalHeight, pad=0.012;
+        var x0=Math.max(0,box[0]-pad)*W, y0=Math.max(0,box[1]-pad)*Hh, x1=Math.min(1,box[2]+pad)*W, y1=Math.min(1,box[3]+pad)*Hh;
+        var cw=x1-x0, ch=y1-y0, s=Math.min(1,2000/Math.max(cw,ch)), w=Math.round(cw*s), h=Math.round(ch*s);
+        rot=((Math.round(Number(rot)||0))%360+360)%360; if(rot<3||rot>357) rot=0;
+        var a=rot*Math.PI/180, cs=Math.abs(Math.cos(a)), sn=Math.abs(Math.sin(a));   // 비스듬한 각도도 똑바로
+        var c=document.createElement('canvas'); c.width=Math.round(w*cs+h*sn); c.height=Math.round(w*sn+h*cs);
+        var g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.translate(c.width/2,c.height/2); g.rotate(a);
+        g.drawImage(img,x0,y0,cw,ch,-w/2,-h/2,w,h);
+        ok(c.toDataURL('image/jpeg',0.88).split(',')[1]);
+      };
+      img.onerror=no; img.src=src;
+    });
+  }
+  function groups(){
+    var solo=S.images.filter(function(x){ return x.solo; }).map(function(x){ return [x]; });
+    var rest=S.images.filter(function(x){ return !x.solo; });
+    return rest.length ? solo.concat([rest]) : solo;
+  }
+  // 자동 나누기: 사진을 고르면 AI가 영수증 위치·방향을 찾아 하나씩 잘라 바로 세움
+  function autoSplit(im){
+    im.busy=true; redraw();
+    gridImage(im.thumb).then(function(b64){ return run('detectReceipts', b64); }).then(function(r){
+      im.busy=false;
+      var items=(r && r.ok && r.items) || [];
+      if(S.images.indexOf(im)<0){ redraw(); return; }
+      var b=items.length && items[0].box;
+      if(!items.length || (items.length===1 && !items[0].rot && (b[2]-b[0])*(b[3]-b[1])>0.75)){ redraw(); return checkQuality([im]); }   // 1장이고 바로 서 있으면 그대로
+      return applyCuts(im, items);
+    }).catch(function(){ im.busy=false; redraw(); checkQuality([im]); });
+  }
+  // 선명도 확인: 흔들리거나 흐려서 읽기 어려운 사진은 다시 찍게 함
+  function smallB64(src, max){
+    return new Promise(function(ok,no){
+      var img=new Image();
+      img.onload=function(){
+        var s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)), c=document.createElement('canvas');
+        c.width=Math.round(img.naturalWidth*s); c.height=Math.round(img.naturalHeight*s);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        ok(c.toDataURL('image/jpeg',0.85).split(',')[1]);
+      };
+      img.onerror=no; img.src=src;
+    });
+  }
+  function checkQuality(list){
+    list=list.filter(function(x){ return x && x.thumb; });
+    if(!list.length) return;
+    list.forEach(function(x){ x.checking=true; x.bad=''; }); redraw();
+    Promise.all(list.map(function(x){ return smallB64(x.thumb, 1400); })).then(function(arr){
+      return run('checkReadable', arr);
+    }).then(function(res){
+      list.forEach(function(x,k){ x.checking=false; var r=(res||[])[k]; x.bad=(r && r.ok===false) ? (r.why||'읽기 어려움') : ''; });
+      redraw();
+    }).catch(function(){ list.forEach(function(x){ x.checking=false; }); redraw(); });
+  }
+  function applyCuts(orig, items){
+    return new Promise(function(ok){
+      // 영수증을 세웠을 때 기준으로 읽는 순서(위 줄 왼쪽부터) 정렬
+      var rc={}; items.forEach(function(it){ var q=Math.round(((Number(it.rot)||0)%360)/90)%4; rc[q]=(rc[q]||0)+1; });
+      var q=+Object.keys(rc).sort(function(a,b){ return rc[b]-rc[a]; })[0]||0;
+      var up=function(it){ var x=(it.box[0]+it.box[2])/2, y=(it.box[1]+it.box[3])/2;
+        return q===1?[1-y,x]:q===2?[1-x,1-y]:q===3?[y,1-x]:[x,y]; };
+      items=items.slice().sort(function(a,b){ var A=up(a), B=up(b); return Math.abs(A[1]-B[1])>0.12 ? A[1]-B[1] : A[0]-B[0]; });
+      var src=orig.file ? URL.createObjectURL(orig.file) : orig.thumb, img=new Image();
+      img.onload=function(){
+        var W=img.naturalWidth, H=img.naturalHeight, pad=0.012;
+        var parts=items.map(function(it,k){
+          var b=it.box, x0=Math.max(0,b[0]-pad)*W, y0=Math.max(0,b[1]-pad)*H, x1=Math.min(1,b[2]+pad)*W, y1=Math.min(1,b[3]+pad)*H;
+          var cw=x1-x0, ch=y1-y0, s=Math.min(1,2000/Math.max(cw,ch)), w=Math.round(cw*s), h=Math.round(ch*s);
+          var rot=((Math.round(Number(it.rot)||0))%360+360)%360; if(rot<3||rot>357) rot=0;
+          var a=rot*Math.PI/180, cs=Math.abs(Math.cos(a)), sn=Math.abs(Math.sin(a));   // 비스듬한 각도도 똑바로
+          var c=document.createElement('canvas'); c.width=Math.round(w*cs+h*sn); c.height=Math.round(w*sn+h*cs);
+          var g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.translate(c.width/2,c.height/2); g.rotate(a);
+          g.drawImage(img,x0,y0,cw,ch,-w/2,-h/2,w,h);
+          var d=c.toDataURL('image/jpeg',0.88);
+          return {mime:'image/jpeg', data:d.split(',')[1], thumb:d, solo:items.length>1, src:orig, part:(k+1)+'/'+items.length, firstOf:k===0?orig:null};
+        });
+        if(orig.file) URL.revokeObjectURL(src);
+        orig.items=items;
+        var at=-1; S.images.forEach(function(x,i){ if(at<0 && (x===orig || x.src===orig)) at=i; });
+        S.images=S.images.filter(function(x){ return x!==orig && x.src!==orig; });
+        if(at<0 || at>S.images.length) at=S.images.length;
+        S.images.splice.apply(S.images,[at,0].concat(parts));
+        redraw(); ok(); checkQuality(parts);
+      };
+      img.onerror=function(){ redraw(); ok(); };
+      img.src=src;
+    });
+  }
+  // ✂ 고치기: 자동으로 나눈 게 틀렸을 때 네모를 직접 고침
+  var CUT={orig:null, boxes:[], rot:0};
+  function openCutter(orig){
+    CUT.orig=orig; CUT.busy=false;
+    CUT.boxes=(orig.items||[]).map(function(it){ return it.box.slice(); });
+    var rc={}; (orig.items||[]).forEach(function(it){ rc[it.rot||0]=(rc[it.rot||0]||0)+1; });
+    CUT.rot=Number(Object.keys(rc).sort(function(a,b){ return rc[b]-rc[a]; })[0]||0);
+    $('cutImg').src=orig.thumb; $('cutter').classList.remove('hide');
+    $('cutImg').onload=function(){ drawBoxes(); };
+    drawBoxes();
+    if(!CUT.boxes.length) autoFind();
+  }
+  function autoFind(){
+    var im=CUT.orig; if(!im || CUT.busy) return;
+    CUT.busy=true; $('cutTitle').textContent='영수증 찾는 중…';
+    gridImage(im.thumb).then(function(b64){ return run('detectReceipts', b64); }).then(function(r){
+      CUT.busy=false;
+      if(r && r.ok && r.items.length){ CUT.boxes=r.items.map(function(it){ return it.box; }); CUT.rot=Number(r.items[0].rot)||0; }
+      drawBoxes();
+      if(!(r && r.ok)) $('cutTitle').textContent='자동 찾기 실패 · 직접 그려주세요';
+    }).catch(function(){ CUT.busy=false; drawBoxes(); $('cutTitle').textContent='자동 찾기 실패 · 직접 그려주세요'; });
+  }
+  function gridImage(src){
+    return new Promise(function(ok,no){
+      var img=new Image();
+      img.onload=function(){
+        var s=Math.min(1,1200/Math.max(img.naturalWidth,img.naturalHeight)), w=Math.round(img.naturalWidth*s), h=Math.round(img.naturalHeight*s);
+        var c=document.createElement('canvas'); c.width=w; c.height=h; var g=c.getContext('2d');
+        g.drawImage(img,0,0,w,h);
+        g.lineWidth=2; g.strokeStyle='rgba(255,0,255,.55)'; g.font='bold 18px sans-serif'; g.fillStyle='#ff00ff';
+        for(var p=10;p<100;p+=10){
+          var x=Math.round(w*p/100), y=Math.round(h*p/100);
+          g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke();
+          g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke();
+          g.fillText(String(p),x+3,22); g.fillText(String(p),3,y-4);
+        }
+        ok(c.toDataURL('image/jpeg',0.8).split(',')[1]);
+      };
+      img.onerror=no; img.src=src;
+    });
+  }
+  function drawBoxes(){
+    var wrap=$('cutWrap');
+    [].slice.call(wrap.querySelectorAll('.cbox')).forEach(function(x){ x.remove(); });
+    CUT.boxes.forEach(function(b,k){
+      var d=document.createElement('div'); d.className='cbox';
+      d.style.left=(b[0]*100)+'%'; d.style.top=(b[1]*100)+'%'; d.style.width=((b[2]-b[0])*100)+'%'; d.style.height=((b[3]-b[1])*100)+'%';
+      var sp=document.createElement('span'); sp.textContent=k+1; d.appendChild(sp);
+      var x=document.createElement('button'); x.textContent='✕';
+      x.onpointerdown=function(e){ e.stopPropagation(); };
+      x.onclick=function(e){ e.stopPropagation(); CUT.boxes.splice(k,1); drawBoxes(); };
+      d.appendChild(x); wrap.appendChild(d);
+    });
+    if(!CUT.busy) $('cutTitle').textContent=CUT.boxes.length?'영수증 '+CUT.boxes.length+'개':'영수증 나누기';
+  }
+  (function(){
+    var wrap=$('cutWrap'), st=null, tmp=null;
+    var pos=function(e){ var r=wrap.getBoundingClientRect(); return [Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)), Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))]; };
+    wrap.addEventListener('pointerdown',function(e){
+      st=pos(e); try{ wrap.setPointerCapture(e.pointerId); }catch(_){}
+      tmp=document.createElement('div'); tmp.className='cbox'; wrap.appendChild(tmp); e.preventDefault();
+    });
+    wrap.addEventListener('pointermove',function(e){
+      if(!st) return; var p=pos(e);
+      tmp.style.left=Math.min(st[0],p[0])*100+'%'; tmp.style.top=Math.min(st[1],p[1])*100+'%';
+      tmp.style.width=Math.abs(p[0]-st[0])*100+'%'; tmp.style.height=Math.abs(p[1]-st[1])*100+'%';
+    });
+    var end=function(e){
+      if(!st) return; var p=pos(e), b=[Math.min(st[0],p[0]),Math.min(st[1],p[1]),Math.max(st[0],p[0]),Math.max(st[1],p[1])];
+      st=null; if(tmp){ tmp.remove(); tmp=null; }
+      if(b[2]-b[0]>0.03 && b[3]-b[1]>0.03){ CUT.boxes.push(b); drawBoxes(); }
+    };
+    wrap.addEventListener('pointerup',end); wrap.addEventListener('pointercancel',end);
+  })();
+  $('cutCancel').onclick=function(){ $('cutter').classList.add('hide'); };
+  $('cutAuto').onclick=function(){ CUT.boxes=[]; drawBoxes(); autoFind(); };
+  $('cutOk').onclick=function(){
+    var orig=CUT.orig; if(!orig){ $('cutter').classList.add('hide'); return; }
+    if(!CUT.boxes.length){   // 네모를 다 지우면 원래 사진 그대로
+      var at=-1; S.images.forEach(function(x,i){ if(at<0 && (x===orig || x.src===orig)) at=i; });
+      S.images=S.images.filter(function(x){ return x!==orig && x.src!==orig; });
+      orig.items=null; S.images.splice(at<0?S.images.length:at,0,orig);
+      $('cutter').classList.add('hide'); redraw(); return;
+    }
+    $('cutTitle').textContent='자르는 중…';
+    applyCuts(orig, CUT.boxes.map(function(b){ return {box:b, rot:CUT.rot}; })).then(function(){ $('cutter').classList.add('hide'); });
+  };
+  function redraw(){
+    var n=S.images.length, box=$('thumbs'); box.innerHTML='';
+    $('center').classList.toggle('empty', !n);
+    S.images.forEach(function(im,i){
+      var d=document.createElement('div'); d.className='thumb';
+      if(im.thumb){ var g=document.createElement('img'); g.src=im.thumb; d.appendChild(g); } else d.textContent='PDF';
+      if(im.busy||im.checking){ var bz=document.createElement('span'); bz.className='busy'; bz.textContent=im.busy?'영수증 찾는 중…':'선명도 확인 중…'; d.appendChild(bz); }
+      else {
+        if(im.bad){ d.className+=' bad'; var bd=document.createElement('span'); bd.className='badtag'; bd.textContent='다시 찍어주세요'; d.appendChild(bd); }
+        if(im.part){ var no=document.createElement('span'); no.className='no'; no.textContent=im.part; d.appendChild(no); }
+        if(im.thumb && (im.firstOf || !im.src)){ var ct=document.createElement('button'); ct.className='cut'; ct.textContent=im.firstOf?'✂ 고치기':'✂ 나누기';
+          ct.onclick=(function(o){ return function(){ openCutter(o); }; })(im.firstOf||im); d.appendChild(ct); }
+      }
+      var x=document.createElement('button'); x.className='x'; x.textContent='✕';
+      x.onclick=function(){ S.images.splice(i,1); redraw(); }; d.appendChild(x);
+      box.appendChild(d);
+    });
+    $('camLabel').innerHTML = n ? '한 장 더 찍으려면 다시 누르세요<br><small>'+n+'장 선택됨</small>' : '눌러서 영수증 촬영<br><small>흔들리지 않게 찍어주세요</small>';
+    $('memo').classList.toggle('hide', !n);
+    var chip=$('spChip'); chip.classList.toggle('hide', !n || S.spender===null);
+    if(S.spender!==null){ chip.innerHTML='지출: <b></b> · 변경'; chip.querySelector('b').textContent=S.spender+(S.spender===S.me?' (본인)':''); }
+    var busy=S.images.some(function(x){ return x.busy||x.checking; }), split=S.images.some(function(x){ return x.src; });
+    var bads=S.images.filter(function(x){ return x.bad; });
+    $('cutTip').classList.toggle('hide', !busy && !split && !bads.length);
+    $('cutTip').classList.toggle('warn', !busy && !!bads.length);
+    $('cutTip').innerHTML = busy ? '사진을 확인하고 있어요…'
+      : bads.length ? '⚠ 흔들리거나 흐려서 읽기 어려운 사진이 '+bads.length+'장 있어요 ('+String(bads[0].bad).replace(/[<>&"]/g,'')+').<br><b>✕로 빼고 다시 찍어주세요.</b>'
+      : '영수증마다 하나씩 잘라서 세웠어요. 틀렸으면 <b>✂ 고치기</b>';
+    var b=$('submitBtn'); b.classList.toggle('hide', !n);
+    var gs=groups();
+    b.disabled=S.sending||busy||!!bads.length; b.textContent = S.sending ? '올리는 중… '+(S.prog||'') : busy ? '사진 확인 중…' : bads.length ? '흐린 사진을 다시 찍어주세요' : (gs.length>1 ? '제출하기 (영수증 '+gs.length+'건)' : '제출하기 ('+n+'장)');
+  }
+  $('submitBtn').onclick=function(){
+    if(!S.images.length || S.sending || S.images.some(function(x){ return x.busy||x.checking||x.bad; })) return;
+    if(S.spender===null){ askSpender(); return; }
+    S.sending=true; $('err').textContent=''; redraw();
+    // 나눈 영수증은 1건씩, 나머지 사진은 합쳐서 1건
+    var gs=groups();
+    // 한 번에 올리고, AI 읽기는 건마다 동시에 뒤에서 진행
+    run('submitMany', { takenBy:S.me, spentBy:S.spender||S.me, memo:$('memo').value,
+      groups:gs.map(function(g){ return g.map(function(x){ return {mime:x.mime, data:x.data}; }); }) })
+    .then(function(r){
+      var ids=r.ids||[];
+      ids.forEach(function(id){ run('processReceipt', id).catch(function(){}); });
+      S.images=[]; S.sending=false; S.prog='';
+      $('center').classList.add('hide'); $('bottom').classList.add('hide'); $('done').classList.remove('hide');
+      $('doneId').textContent='접수번호 '+ids[0]+(ids.length>1?' ~ '+ids[ids.length-1]+' ('+ids.length+'건)':'');
+    }).catch(function(e){ S.sending=false; S.prog=''; redraw(); $('err').textContent='제출 실패: '+(e.message||e)+' — 다시 눌러주세요.'; });
+  };
+  $('againBtn').onclick=function(){
+    S.images=[]; S.spender=null; $('memo').value=''; redraw();
+    $('done').classList.add('hide'); $('center').classList.remove('hide'); $('bottom').classList.remove('hide');
+  };
+
+  // ③ 내 내역 (캘린더)
+  var C={ y:0, m:0, sel:'', byDay:{} }, photoCache={};
+  function loadHist(){
+    $('dayBox').innerHTML='<div class="hint">불러오는 중…</div>';
+    run('myHistory', S.me).then(drawHist).catch(function(e){
+      $('dayBox').innerHTML=''; var d=document.createElement('div'); d.className='err'; d.textContent='불러오기 실패: '+(e.message||e); $('dayBox').appendChild(d); });
+  }
+  function ymd(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+  function drawHist(all){
+    S.rows=all||[];
+    var mine=function(r){ return r.spentBy===S.me; };
+    var due=0, got=0, spent=0, personal=0, paper=0;
+    C.byDay={};
+    S.rows.forEach(function(r){
+      var k=String(r.date||'').slice(0,10);
+      if(r.paperMissing) paper++;
+      if(r.relay) return;                       // 남의 영수증 (전달만 맡은 것)은 달력·금액에서 빼기
+      if(/^\d{4}-\d{2}-\d{2}$/.test(k)) (C.byDay[k]=C.byDay[k]||[]).push(r);
+      if(mine(r)){
+        spent+=num(r.amount);
+        if(r.paid) got+=num(r.amount)-num(r.personal); else { due+=num(r.amount)-num(r.personal); personal+=num(r.personal); }
+      }
+    });
+    $('heroAmt').textContent=won(due)+'원';
+    $('heroNote').textContent=personal>0 ? '식비 초과 개인 부담 '+won(personal)+'원은 빠진 금액이에요' : '';
+    var pn=$('paperNote'); pn.classList.toggle('hide', !paper); pn.textContent='📄 종이 영수증 전달 '+paper+'건 — 눌러서 언제 누구에게 줄지 보기'; pn.onclick=function(){ C.sel='paper'; drawCal(); drawDay(); };
+    var sum=$('sum'); sum.innerHTML='';
+    [['정산 받은 총 금액', won(got)+'원'], ['지출 총 금액', won(spent)+'원']].forEach(function(x){
+      var d=document.createElement('div'), s=document.createElement('small'), b=document.createElement('b');
+      s.textContent=x[0]; b.textContent=x[1]; d.appendChild(s); d.appendChild(b); sum.appendChild(d);
+    });
+    if(!C.y){
+      var days=Object.keys(C.byDay).sort(), unpaid=days.filter(function(k){ return C.byDay[k].some(function(r){ return !r.paid; }); });
+      var pick=unpaid.length?unpaid[unpaid.length-1]:(days.length?days[days.length-1]:ymd(new Date()));
+      C.y=+pick.slice(0,4); C.m=+pick.slice(5,7)-1; if(C.byDay[pick]) C.sel=pick;
+    }
+    drawCal(); drawDay();
+  }
+  $('prevM').onclick=function(){ C.m--; if(C.m<0){ C.m=11; C.y--; } drawCal(); };
+  $('nextM').onclick=function(){ C.m++; if(C.m>11){ C.m=0; C.y++; } drawCal(); };
+  function drawCal(){
+    $('calTitle').textContent=C.y+'년 '+(C.m+1)+'월';
+    var g=$('calGrid'); g.innerHTML='';
+    ['일','월','화','수','목','금','토'].forEach(function(w){ var d=document.createElement('div'); d.className='dow'; d.textContent=w; g.appendChild(d); });
+    var first=new Date(C.y,C.m,1), start=first.getDay(), n=new Date(C.y,C.m+1,0).getDate(), today=ymd(new Date());
+    for(var i=0;i<start;i++){ var e=document.createElement('div'); e.className='day out'; g.appendChild(e); }
+    for(var dd=1; dd<=n; dd++){
+      var k=ymd(new Date(C.y,C.m,dd)), list=C.byDay[k], b=document.createElement('button');
+      b.className='day'+(k===today?' today':'')+(k===C.sel?' sel':'');
+      b.appendChild(document.createTextNode(dd));
+      if(list){
+        var allPaid=list.every(function(r){ return r.paid; }), tot=list.reduce(function(a,r){ return a+num(r.amount); },0);
+        b.className+=' has '+(allPaid?'paid':'todo')+(list.some(function(r){ return r.paperMissing; })?' paper':'');
+        var sm=document.createElement('small'); sm.textContent=tot?(tot>=10000?(Math.round(tot/1000)/10)+'만':won(tot)):list.length+'건'; b.appendChild(sm);
+        b.onclick=(function(key){ return function(){ C.sel=key; drawCal(); drawDay(); }; })(k);
+      }
+      g.appendChild(b);
+    }
+  }
+  function drawDay(){
+    var box=$('dayBox'); box.innerHTML='';
+    if(C.sel==='paper') return drawPaper(box);
+    var list=C.byDay[C.sel];
+    if(!list){ box.innerHTML='<div class="hint" style="text-align:center">색칠된 날짜를 누르면 그날 영수증이 보여요.</div>'; return; }
+    var tot=list.reduce(function(a,r){ return a+num(r.amount); },0);
+    var t=document.createElement('div'); t.className='dayTitle';
+    var p=C.sel.split('-'), dt=new Date(+p[0],+p[1]-1,+p[2]);
+    t.innerHTML='<b></b><span></span>';
+    t.querySelector('b').textContent=(+p[1])+'월 '+(+p[2])+'일 ('+'일월화수목금토'[dt.getDay()]+')'+(list[0].kind?' · '+list[0].kind:'');
+    t.querySelector('span').textContent=list.length+'건 · '+won(tot)+'원';
+    box.appendChild(t);
+    list.forEach(function(r){ box.appendChild(itemEl(r)); });
+  }
+  function dlabel(k){ var p=k.split('-'), dt=new Date(+p[0],+p[1]-1,+p[2]); return (+p[1])+'월 '+(+p[2])+'일 ('+'일월화수목금토'[dt.getDay()]+')'; }
+  function drawPaper(box){
+    var rows=S.rows.filter(function(r){ return r.paperMissing; });
+    var t=document.createElement('div'); t.className='dayTitle'; t.innerHTML='<b></b><span></span>';
+    t.querySelector('b').textContent='📄 종이 영수증 전달';
+    t.querySelector('span').textContent=rows.length+'건';
+    box.appendChild(t);
+    if(!rows.length){ var h=document.createElement('div'); h.className='hint'; h.textContent='전달할 영수증이 없어요.'; box.appendChild(h); return; }
+    // 전달할 날짜별로 묶기 (task 앞의 '11/23')
+    var g={}; rows.forEach(function(r){ var m=/^(\d{1,2})\/(\d{1,2})/.exec(r.task||''); var k=m?('0'+m[1]).slice(-2)+'-'+('0'+m[2]).slice(-2):'99-99'; (g[k]=g[k]||[]).push(r); });
+    Object.keys(g).sort().forEach(function(k){
+      var d=document.createElement('div'); d.className='paperDate'; d.textContent=k==='99-99'?'날짜 미정':(+k.slice(0,2))+'월 '+(+k.slice(3))+'일'; box.appendChild(d);
+      g[k].forEach(function(r){ box.appendChild(itemEl(r)); });
+    });
+  }
+  function itemEl(r){
+      var el=document.createElement('div'); el.className='item';
+      var top=document.createElement('div'); top.className='t';
+      var l=document.createElement('span'); l.textContent=r.id+(r.store?' · '+r.store:'');
+      var bd=document.createElement('span'); bd.className='badge '+(r.paid?'ok':'wait'); bd.textContent=r.paid?'정산 완료':(r.status+(r.submitted?' · 회계 제출됨':''));
+      top.appendChild(l); top.appendChild(bd);
+      var m=document.createElement('div'); m.className='m';
+      var c=document.createElement('span'); c.className='c'; c.textContent=r.content||'(내용 읽는 중)';
+      var a=document.createElement('span'); a.className='a'; a.textContent=num(r.amount)?won(r.amount)+'원':'-';
+      m.appendChild(c); m.appendChild(a);
+      el.appendChild(top); el.appendChild(m);
+      var extra=[];
+      if(r.spentBy && r.spentBy!==S.me) extra.push('쓴 사람: '+r.spentBy);
+      if(r.takenBy && r.takenBy!==S.me) extra.push('찍은 사람: '+r.takenBy);
+      if(extra.length){ var e=document.createElement('div'); e.className='hint'; e.textContent=extra.join(' · '); el.appendChild(e); }
+      if(num(r.personal)>0){ var pw=document.createElement('div'); pw.className='warnline'; pw.textContent='식비 초과 개인 부담 '+won(r.personal)+'원'; el.appendChild(pw); }
+      if(r.paperMissing){ var w=document.createElement('div'); w.className='warnline'; w.textContent='📄 '+r.task; el.appendChild(w); }
+      var ph=document.createElement('div'); ph.className='photos'; el.appendChild(ph);
+      showPhotos(r.id, ph, r.crop);
+      return el;
+  }
+  function showPhotos(id, box, crop){
+    var put=function(list){
+      box.innerHTML='';
+      if(!list.length){ box.innerHTML='<span class="ph">사진 없음</span>'; return; }
+      list.forEach(function(p){
+        if(p.pdf){ var s=document.createElement('span'); s.className='ph'; s.textContent='PDF 파일'; box.appendChild(s); return; }
+        var img=document.createElement('img'); img.src=p.src; img.alt='영수증';
+        img.onclick=function(){ $('viewerImg').src=p.src; $('viewer').classList.remove('hide'); };
+        box.appendChild(img);
+      });
+    };
+    if(photoCache[id]) return put(photoCache[id]);
+    box.innerHTML='<span class="ph">사진 불러오는 중…</span>';
+    run('myPhotos', S.me, id).then(function(l){
+      var job=null; try{ job=crop?JSON.parse(crop):null; }catch(e){}
+      var at=job ? l.map(function(p){ return p.id; }).indexOf(job.f) : -1;
+      if(at<0 || !l[at].src){ photoCache[id]=l; put(l); return; }
+      // 여러 영수증이 한 장에 찍힌 사진 → 이 영수증 부분만 잘라서 보여주고 저장
+      return cropB64(l[at].src, job.b, job.r).then(function(b64){
+        l=l.slice(); l[at]={src:'data:image/jpeg;base64,'+b64, id:job.f}; photoCache[id]=l; put(l);
+        run('cropSave', S.me, id, job.f, b64).catch(function(){});
+      });
+    }).catch(function(e){ box.innerHTML='<span class="ph">사진을 못 불러왔어요</span>'; });
+  }
+  $('viewer').onclick=function(){ this.classList.add('hide'); };
+})();
+</script>
+</body>
+</html>
